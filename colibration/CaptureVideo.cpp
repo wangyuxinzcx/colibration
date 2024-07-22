@@ -241,9 +241,9 @@ void CaptureVideo::saveToXML(const std::vector<Eigen::Matrix3d>& rectificationMa
 
 void CaptureVideo::Calibrate() {
     int numCamera = 5;
-    std::string database_path = "D:\\practice\\database.db";
-    std::string image_path = "D:\\practice\\test_scene\\images";
-    std::string output_path = "D:\\practice\\test_scene\\output_2";
+    std::string database_path = "D:\\practice\\test_scene_2\\database.db";
+    std::string image_path = "D:\\practice\\test_scene_2\\images";
+    std::string output_path = "D:\\practice\\test_scene_2\\output";
     std::string colmap_path = "D:\\桌面\\COLMAP-3.9.1-windows-cuda\\COLMAP-3.9.1-windows-cuda\\colmap.bat";
     int result = execute_colmap_commands(colmap_path, database_path, image_path, output_path);
     if (result == 0) {
@@ -309,4 +309,8 @@ bool CreateFolder(const std::wstring& folderPath) {
         std::wcout << L"文件夹创建失败: " << folderPath << std::endl;
         return FALSE;
     }
+}
+
+int main() {
+    CaptureVideo::Calibrate();
 }
