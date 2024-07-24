@@ -95,7 +95,7 @@ std::vector<Eigen::Matrix3d> CaptureVideo::getCameraExtrinsics(const std::string
     int cameraIndex = 0;
 
     while (std::getline(file, line) && cameraIndex < numCameras) {
-        if (line.find(".JPG") != std::string::npos) {
+        if (line.find(".jpg") != std::string::npos) {
             std::istringstream iss(line);
             int imgIndex, cameraId;
             double qw, qx, qy, qz, tx, ty, tz;
@@ -103,9 +103,15 @@ std::vector<Eigen::Matrix3d> CaptureVideo::getCameraExtrinsics(const std::string
 
             if (iss >> imgIndex >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> cameraId >> imgName) {
                 Eigen::Matrix3d R = quaternionToRotationMatrix(qw, qx, qy, qz);
-                rotationMatrices[cameraId] = R;
+                rotationMatrices[cameraId - 1] = R;
                 cameraIndex++;
+/*
+                Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+                std::cout << "Rotation Matrix for Camera " << cameraId << ":\n"
+                    << rotationMatrices[cameraId - 1].format(CleanFmt) << "\n\n";
+                */
             }
+
         }
     }
 
@@ -167,8 +173,13 @@ std::vector<Eigen::Matrix3d> CaptureVideo::getCameraIntrinsics(const std::string
                     0, f, cy,
                     0, 0, 1;
 
-                intrinsics[cameraId] = K;
+                intrinsics[cameraId - 1] = K;
                 cameraIndex++;
+                /*
+                Eigen::IOFormat CleanFmt(4, 0, ", ", "\n", "[", "]");
+                std::cout << "Rotation Matrix for Camera " << cameraId << ":\n"
+                    << intrinsics[cameraId - 1].format(CleanFmt) << "\n\n";
+*/
             }
         }
     }
@@ -201,7 +212,8 @@ std::vector<Eigen::Matrix3d> CaptureVideo::computeRectificationMatrices(
         Eigen::Matrix3d R_rect = R_ref * R.transpose();
         Eigen::Matrix3d K_rect = K_ref * K.inverse();
 
-        rectificationMatrices[i] = K_rect * R_rect;
+        rectificationMatrices[i] = K_ref * R_ref * R.transpose() * K.inverse();
+        rectificationMatrices[i] /= rectificationMatrices[i](2, 2);
     }
 
     return rectificationMatrices;
@@ -245,10 +257,11 @@ void CaptureVideo::Calibrate() {
     std::string image_path = "D:\\practice\\test_scene_2\\images";
     std::string output_path = "D:\\practice\\test_scene_2\\output";
     std::string colmap_path = "D:\\×ÀÃæ\\COLMAP-3.9.1-windows-cuda\\COLMAP-3.9.1-windows-cuda\\colmap.bat";
-    int result = execute_colmap_commands(colmap_path, database_path, image_path, output_path);
+    //int result = execute_colmap_commands(colmap_path, database_path, image_path, output_path);
+    int result = 0;
     if (result == 0) {
         std::vector<Eigen::Matrix3d> Extrinsics = getCameraExtrinsics(output_path + "\\0\\images.txt", numCamera);
-        std::vector<Eigen::Matrix3d> Intrinsics = getCameraExtrinsics(output_path + "\\0\\cameras.txt", numCamera);
+        std::vector<Eigen::Matrix3d> Intrinsics = getCameraIntrinsics(output_path + "\\0\\cameras.txt", numCamera);
         std::vector<Eigen::Matrix3d> Rectification = computeRectificationMatrices(numCamera, Extrinsics, Intrinsics);
         saveToXML(Rectification, output_path + "H_mat.xml");
     }
