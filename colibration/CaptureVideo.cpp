@@ -131,14 +131,14 @@ std::vector<Eigen::Vector3d> CaptureVideo::getCameraExtrinsics_T(const std::stri
     int cameraIndex = 0;
 
     while (std::getline(file, line) && cameraIndex < numCameras) {
-        if (line.find(".JPG") != std::string::npos) {
+        if (line.find(".jpg") != std::string::npos) {
             std::istringstream iss(line);
             int imgIndex, cameraId;
             double qw, qx, qy, qz, tx, ty, tz;
             std::string imgName;
 
             if (iss >> imgIndex >> qw >> qx >> qy >> qz >> tx >> ty >> tz >> cameraId >> imgName) {
-                T[cameraId] << tx, ty, tz;
+                T[cameraId - 1] << tx, ty, tz;
                 cameraIndex++;
             }
         }
