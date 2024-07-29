@@ -47,6 +47,12 @@ public:
     static void saveToXML(const std::vector<Eigen::Matrix3d>& rectificationMatrices, const std::string& outputFilePath);
 
     static void Calibrate();
+
+    static std::vector<Eigen::Matrix3d> computeRectificationMatrices_2(
+        int numCameras,
+        const std::vector<Eigen::Matrix3d>& rotationMatrices,
+        const std::vector<Eigen::Matrix3d>& intrinsics,
+        const std::vector<Eigen::Vector3d>& T);
 };
 
 #endif // CAPTUREPROC_H

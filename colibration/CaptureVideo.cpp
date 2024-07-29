@@ -95,7 +95,8 @@ std::vector<Eigen::Matrix3d> CaptureVideo::getCameraExtrinsics(const std::string
     int cameraIndex = 0;
 
     while (std::getline(file, line) && cameraIndex < numCameras) {
-        if (line.find(".jpg") != std::string::npos) {
+        line = to_upper(line);
+        if (line.find(".JPG") != std::string::npos) {
             std::istringstream iss(line);
             int imgIndex, cameraId;
             double qw, qx, qy, qz, tx, ty, tz;
@@ -131,7 +132,8 @@ std::vector<Eigen::Vector3d> CaptureVideo::getCameraExtrinsics_T(const std::stri
     int cameraIndex = 0;
 
     while (std::getline(file, line) && cameraIndex < numCameras) {
-        if (line.find(".jpg") != std::string::npos) {
+        line = to_upper(line);
+        if (line.find(".JPG") != std::string::npos) {
             std::istringstream iss(line);
             int imgIndex, cameraId;
             double qw, qx, qy, qz, tx, ty, tz;
@@ -161,6 +163,7 @@ std::vector<Eigen::Matrix3d> CaptureVideo::getCameraIntrinsics(const std::string
     int cameraIndex = 0;
 
     while (std::getline(file, line) && cameraIndex < numCameras) {
+        line = to_upper(line);
         if (line.find("SIMPLE") != std::string::npos) {
             std::istringstream iss(line);
             double f, cx, cy, s;
@@ -208,15 +211,50 @@ std::vector<Eigen::Matrix3d> CaptureVideo::computeRectificationMatrices(
         Eigen::Matrix3d R = rotationMatrices[i];
         Eigen::Matrix3d K = intrinsics[i];
 
-        // 计算立体校正矩阵
-        Eigen::Matrix3d R_rect = R_ref * R.transpose();
-        Eigen::Matrix3d K_rect = K_ref * K.inverse();
+        rectificationMatrices[i] = K_ref * R_ref * R.transpose() * K.inverse();
+        rectificationMatrices[i] /= rectificationMatrices[i](2, 2);
+    }
+
+    return rectificationMatrices;
+}
+
+std::vector<Eigen::Matrix3d> CaptureVideo::computeRectificationMatrices_2(
+    int numCameras,
+    const std::vector<Eigen::Matrix3d>& rotationMatrices,
+    const std::vector<Eigen::Matrix3d>& intrinsics,
+    const std::vector<Eigen::Vector3d>& T) {
+    // 检查输入参数的大小是否匹配相机数量
+    if (rotationMatrices.size() != numCameras || intrinsics.size() != numCameras) {
+        throw std::invalid_argument("Number of cameras and size of rotationMatrices and intrinsics vectors must match");
+    }
+    std::vector<Eigen::Matrix3d> rectificationMatrices(numCameras);
+    Eigen::Vector3d c1 = -rotationMatrices[0].transpose()  * T[0];
+    Eigen::Vector3d c2 = -rotationMatrices[numCameras - 1].transpose() * T[numCameras - 1];
+    Eigen::Vector3d r1 = (c1 - c2).normalized();
+    Eigen::Vector3d r2 = (rotationMatrices[0].row(2).transpose().cross(r1)).normalized();
+    Eigen::Vector3d r3 = r1.cross(r2);
+
+    Eigen::Matrix3d R_ref ;
+    Eigen::Matrix3d K_ref ;
+
+    R_ref << r1.transpose(), r2.transpose(), r3.transpose();
+    K_ref << 0, 0, 0, 0, 0, 0, 0, 0, 0;
+
+    for (int i = 0; i < numCameras; i++) {
+        K_ref += intrinsics[i];
+    }
+    K_ref /= numCameras;
+
+    for (int i = 0; i < numCameras; ++i) {
+        Eigen::Matrix3d R = rotationMatrices[i];
+        Eigen::Matrix3d K = intrinsics[i];
 
         rectificationMatrices[i] = K_ref * R_ref * R.transpose() * K.inverse();
         rectificationMatrices[i] /= rectificationMatrices[i](2, 2);
     }
 
     return rectificationMatrices;
+
 }
 
 // 保存到xml文件
@@ -261,9 +299,11 @@ void CaptureVideo::Calibrate() {
     int result = 0;
     if (result == 0) {
         std::vector<Eigen::Matrix3d> Extrinsics = getCameraExtrinsics(output_path + "\\0\\images.txt", numCamera);
+        //std::vector<Eigen::Vector3d> T = getCameraExtrinsics_T(output_path + "\\0\\images.txt", numCamera);
         std::vector<Eigen::Matrix3d> Intrinsics = getCameraIntrinsics(output_path + "\\0\\cameras.txt", numCamera);
         std::vector<Eigen::Matrix3d> Rectification = computeRectificationMatrices(numCamera, Extrinsics, Intrinsics);
-        saveToXML(Rectification, output_path + "H_mat.xml");
+        //std::vector<Eigen::Matrix3d> Rectification = computeRectificationMatrices_2(numCamera, Extrinsics, Intrinsics, T);
+        saveToXML(Rectification, output_path + "H_mat_2.xml");
     }
 }
 
